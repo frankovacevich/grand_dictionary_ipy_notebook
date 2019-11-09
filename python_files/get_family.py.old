@@ -1,0 +1,94 @@
+from bs4 import BeautifulSoup
+from getwrdlist import *
+
+families_ = []
+extended_ = {}
+
+for file_name in ["do","na","nad","o","ob","od","op","ot","po","pod","pred","pri","pro","raz","s","sa","samo","su","u","uz","za"]:
+    f = open(file_name + ".html",encoding = "UTF-8")
+    content = f.read()
+    f.close()
+    print(file_name)
+
+    soup = BeautifulSoup(content, 'html.parser')
+    soup = soup.find("div", {"class": "mw-category"})
+    lis = soup.find_all("li")
+
+    for li in lis:
+        
+        li = li.text.strip()
+        if not li.endswith("ti") and not li.endswith("ći"):
+            continue
+
+        stem_ = li[len(file_name):]
+        if stem_ not in families_:
+            families_.append(stem_)
+
+        if stem_ == "govarati":
+            print("HEY!")
+
+        if stem_ in extended_:
+            extended_[stem_].append(li)
+        else:
+            extended_[stem_] = []
+            extended_[stem_].append(li)
+
+
+"""
+SORT FAMILIES BY NAME
+"""
+#families_.sort(key=lambda x : len(extended_[x]))
+families_.sort()
+
+"""
+PRINT A LIST WITH ALL THE WORDS AS TXT
+"""
+f = open("out.txt","w+",encoding="UTF-8")
+for family in families_:
+    f.write(family + "\n")
+    for item in extended_[family]:
+        f.write(item + "\n")
+
+    f.write("\n")
+f.close()
+
+"""
+PRINT A DOCUMENT IN HTML WITH THE WORDS AND THEIR DEFs
+"""
+f = open("doc.html","w+",encoding="UTF-8")
+f.write("<!DOCTYPE html>\n")
+for family in families_:
+
+    ##Add stem name to the extended list
+    extended_[family].append(family)
+    
+    f.write("<h2>" + family + "</h2>\n")
+    f.write("<table>\n")
+    ##Print each of the words of the extended family
+    for item in extended_[family]:
+        if item not in word_dict:
+            print(item)
+            continue
+        
+        f.write("<tr>\n")
+
+        ##Print imperfectives in italics
+        if "imperfective" in word_dict[item].typ:
+            f.write("<td><i>" + word_dict[item].name + "</i></td>\n")
+        else:
+            f.write("<td>" + word_dict[item].name + "</td>\n")
+            
+        f.write("<td>" + word_dict[item].get_english() + "</td>\n")
+        f.write("<tr>\n")
+                
+    f.write("</table>\n")
+
+    f.write("\n")
+
+f.write("</html>")
+f.close()
+
+
+
+
+

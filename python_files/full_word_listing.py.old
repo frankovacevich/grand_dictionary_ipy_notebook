@@ -1,0 +1,92 @@
+##
+## This is a basic scraper to get words from the wiktionary page
+## The user uploades a file
+## 
+## Francisco Kovacevich / June 2019
+##
+
+
+
+## Constants
+## =========
+INPUT_FILE  = "true_missing_words.txt"
+OUTPUT_FILE = "true_missing_words_xml_content.txt"
+FAILED_FILE = "failed_words.txt"
+STARTING_ID = 18020
+WORD_TYPES  = "Verb"
+
+##imports
+from bs4 import BeautifulSoup
+from get_table_fun import *
+import requests
+
+##open output files
+output = open(OUTPUT_FILE,"w+",encoding="UTF-8")
+failed = open(FAILED_FILE,"w+",encoding="UTF-8")
+
+##helper function to get the html code
+def getHTMLCode(word, lang = "en"):
+    webpage = "http://" + lang + ".wiktionary.org/wiki/" + word
+    req = requests.get(webpage)
+    return BeautifulSoup(req.text, 'html.parser')
+
+##helper function to determine aspect of a verb
+def getVerbAspect(code):
+	if "impf or pf" in code:
+		return " (imperfective or perfective)"
+	elif "impf" in code:
+		return " (imperfective)"
+	elif "pf" in code:
+		return " (perfective)"
+	else:
+		return ""  
+
+with open(INPUT_FILE,"r",encoding="UTF-8") as f:
+	i = 0
+	for line in f:
+		i += 1
+		print(i)
+
+		line = line.replace("\n","")
+
+		try:
+			code = getHTMLCode(line)
+			if "Serbo-Croatian" not in code.text:
+				raise Exception("Error")
+
+			##Get aspect
+			type_ = ""
+			if WORD_TYPES == "Verb":
+				aspect_ = code.find("span", {"id" : WORD_TYPES}).parent
+				aspect_ = aspect_.findNext("p").find("abbr")
+				type_ = "Verb" + getVerbAspect(aspect_)
+
+			##Get english
+			english_ = code.find("span", {"id" : WORD_TYPES})
+			english_ = english_.findNext("ol")
+			english_ = english_.findAll("li")
+
+			english = []
+			for en in english_:
+				english.append(en.text.strip())	
+			
+
+			##Try to get Declension table
+			tables = ""
+			try:
+				tables = GET_VERB(code)
+			except:
+				print("caca en tablas de " + line)
+
+			output.write(word_scheme(tables, line, type_, STARTING_ID + i, english))
+
+		##
+		##Catch error
+		except Exception:
+			print("caca en " + line)
+			failed.write(line + "\n")
+
+	f.close()
+
+output.close()
+failed.close()
